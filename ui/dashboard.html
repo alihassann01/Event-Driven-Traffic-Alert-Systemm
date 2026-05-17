@@ -1,11 +1,570 @@
-<!-- ============================================================
-     OWNER: PARTNER (Optional - only if time allows)
-     FILE:  ui/dashboard.html
-     TASK:  Simple live traffic event feed dashboard
-     MARKS: Optional — bonus for viva/portfolio
-     ============================================================
-     Build a dark-themed HTML page with:
-     - A table showing: Event Type | Camera | Timestamp | Status
-     - JavaScript that adds mock rows every 2 seconds
-     ============================================================ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time traffic alert system monitoring dashboard">
+    <title>Traffic Alert System — Live Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset ─────────────────────────────────────────────── */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        /* ── Tokens ────────────────────────────────────────────── */
+        :root {
+            --bg:          #0f1117;
+            --bg-card:     #1a1d27;
+            --bg-hover:    #1f2230;
+            --bg-alt-row:  rgba(255,255,255, 0.02);
+
+            --text:        #e4e5e9;
+            --text-sec:    #8b8d97;
+            --text-muted:  #5c5e69;
+
+            --border:      rgba(255,255,255, 0.06);
+
+            --red:    #ef4444;
+            --orange: #f97316;
+            --green:  #22c55e;
+            --blue:   #3b82f6;
+            --yellow: #eab308;
+
+            --radius: 8px;
+        }
+
+        /* ── Body ──────────────────────────────────────────────── */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Layout ────────────────────────────────────────────── */
+        .dashboard {
+            max-width: 1260px;
+            margin: 0 auto;
+            padding: 0 24px 48px;
+        }
+
+        /* ── Header ────────────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 17px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Live pill */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px 3px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(34,197,94,0.2);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.4; }
+        }
+
+        .live-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .clock {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ── Stats Row ─────────────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px;
+            border-top: 2px solid transparent;
+            transition: background 0.15s ease;
+        }
+
+        .stat-card:hover { background: var(--bg-hover); }
+
+        .stat-card.violations { border-top-color: var(--red); }
+        .stat-card.congestion { border-top-color: var(--orange); }
+        .stat-card.cleared    { border-top-color: var(--green); }
+        .stat-card.detected   { border-top-color: var(--blue); }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-card.violations .stat-value { color: var(--red); }
+        .stat-card.congestion .stat-value { color: var(--orange); }
+        .stat-card.cleared    .stat-value { color: var(--green); }
+        .stat-card.detected   .stat-value { color: var(--blue); }
+
+        /* ── Table Container ───────────────────────────────────── */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .table-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .event-count-badge {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* ── Table ─────────────────────────────────────────────── */
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            padding: 10px 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.12s ease;
+        }
+
+        tbody tr:nth-child(even) { background: var(--bg-alt-row); }
+        tbody tr:hover { background: rgba(255,255,255, 0.035); }
+        tbody tr:last-child { border-bottom: none; }
+
+        tbody td {
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 400;
+            vertical-align: middle;
+        }
+
+        /* ── Event Badges ──────────────────────────────────────── */
+        .event-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .event-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Per-type badge colours — flat, no glow */
+        tr.speed-violation .event-badge  { background: rgba(239,68,68,0.12);  color: #f87171; }
+        tr.speed-violation .dot          { background: #f87171; }
+
+        tr.congestion-alert .event-badge { background: rgba(249,115,22,0.12); color: #fb923c; }
+        tr.congestion-alert .dot         { background: #fb923c; }
+
+        tr.traffic-cleared .event-badge  { background: rgba(34,197,94,0.12);  color: #4ade80; }
+        tr.traffic-cleared .dot          { background: #4ade80; }
+
+        tr.vehicle-detected .event-badge { background: rgba(59,130,246,0.12); color: #60a5fa; }
+        tr.vehicle-detected .dot         { background: #60a5fa; }
+
+        /* Camera ID */
+        .camera-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-sec);
+        }
+
+        /* Details */
+        .details-text {
+            color: var(--text-sec);
+            font-size: 12px;
+        }
+        .details-text strong {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Timestamp */
+        .timestamp {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Status badge — small pill */
+        .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.processed {
+            background: rgba(34,197,94, 0.12);
+            color: #4ade80;
+        }
+
+        .status-badge.pending {
+            background: rgba(234,179,8, 0.12);
+            color: #facc15;
+        }
+
+        /* ── Row entrance ──────────────────────────────────────── */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .row-enter { animation: slideIn 0.3s ease forwards; }
+
+        /* ── Row exit ──────────────────────────────────────────── */
+        @keyframes fadeOut {
+            from { opacity: 1; max-height: 55px; }
+            to   { opacity: 0; max-height: 0; padding: 0; }
+        }
+        .row-exit { animation: fadeOut 0.25s ease forwards; overflow: hidden; }
+
+        /* ── Footer ────────────────────────────────────────────── */
+        .footer {
+            text-align: center;
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ── Responsive ────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header-left { flex-direction: column; gap: 2px; }
+            .header-right { width: 100%; }
+        }
+
+        @media (max-width: 600px) {
+            .dashboard { padding: 0 12px 32px; }
+            .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 14px; }
+            .stat-value { font-size: 24px; }
+            thead th, tbody td { padding: 10px 12px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+
+        <!-- ── Header ─────────────────────────────────────────── -->
+        <header class="header">
+            <div class="header-left">
+                <h1>Traffic Alert System</h1>
+                <span class="header-subtitle">Live event monitoring</span>
+            </div>
+            <div class="header-right">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span class="live-text">Live</span>
+                </div>
+                <div class="clock" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- ── Stats Cards ────────────────────────────────────── -->
+        <section class="stats-row">
+            <div class="stat-card violations">
+                <div class="stat-label">Speed Violations</div>
+                <div class="stat-value" id="stat-violations">0</div>
+            </div>
+            <div class="stat-card congestion">
+                <div class="stat-label">Congestion Alerts</div>
+                <div class="stat-value" id="stat-congestion">0</div>
+            </div>
+            <div class="stat-card cleared">
+                <div class="stat-label">Traffic Cleared</div>
+                <div class="stat-value" id="stat-cleared">0</div>
+            </div>
+            <div class="stat-card detected">
+                <div class="stat-label">Vehicles Detected</div>
+                <div class="stat-value" id="stat-detected">0</div>
+            </div>
+        </section>
+
+        <!-- ── Event Table ────────────────────────────────────── -->
+        <div class="table-container">
+            <div class="table-header-bar">
+                <span class="table-title">Event Stream</span>
+                <span class="event-count-badge" id="event-count">0 events</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Camera ID</th>
+                        <th>Details</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="event-body">
+                    <!-- Rows injected by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ── Footer ─────────────────────────────────────────── -->
+        <footer class="footer">
+            Event-Driven Traffic Alert System &mdash; Observer Pattern &bull; Idempotent Receiver &bull; Event Envelope
+        </footer>
+    </div>
+
+    <script>
+        /* ── Mock Data Generators ──────────────────────────────── */
+        const CAMERAS = ['CAM_01', 'CAM_02', 'CAM_03', 'CAM_04', 'CAM_05', 'CAM_06'];
+        const PLATES = ['ABC-123', 'XYZ-999', 'LMN-456', 'PQR-321', 'JKL-777', 'DEF-888', 'GHI-555', 'MNO-222'];
+        const INTERSECTIONS = ['INT_01', 'INT_02', 'INT_03', 'INT_04', 'INT_05', 'INT_06', 'INT_07', 'INT_08'];
+        const SEVERITIES = ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'];
+
+        const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        /* Event type definitions */
+        const EVENT_TYPES = [
+            {
+                type: 'SpeedViolation',
+                cssClass: 'speed-violation',
+                label: 'Speed Violation',
+                generate() {
+                    const speed = randInt(80, 140);
+                    const limit = pick([60, 80]);
+                    return {
+                        camera: pick(CAMERAS),
+                        details: `<strong>${pick(PLATES)}</strong> — ${speed} km/h in ${limit} km/h zone`,
+                    };
+                }
+            },
+            {
+                type: 'CongestionAlert',
+                cssClass: 'congestion-alert',
+                label: 'Congestion Alert',
+                generate() {
+                    const severity = pick(SEVERITIES);
+                    const count = randInt(40, 120);
+                    return {
+                        camera: pick(CAMERAS),
+                        details: `<strong>${pick(INTERSECTIONS)}</strong> — ${count} vehicles, severity: ${severity}`,
+                    };
+                }
+            },
+            {
+                type: 'TrafficCleared',
+                cssClass: 'traffic-cleared',
+                label: 'Traffic Cleared',
+                generate() {
+                    return {
+                        camera: pick(CAMERAS),
+                        details: `<strong>${pick(INTERSECTIONS)}</strong> — Normal flow restored`,
+                    };
+                }
+            },
+            {
+                type: 'VehicleDetected',
+                cssClass: 'vehicle-detected',
+                label: 'Vehicle Detected',
+                generate() {
+                    const lane = randInt(1, 4);
+                    return {
+                        camera: pick(CAMERAS),
+                        details: `<strong>${pick(PLATES)}</strong> — Lane ${lane}`,
+                    };
+                }
+            },
+        ];
+
+        /* ── State ─────────────────────────────────────────────── */
+        const MAX_ROWS = 20;
+        let eventIndex = 0;
+        let counts = { SpeedViolation: 0, CongestionAlert: 0, TrafficCleared: 0, VehicleDetected: 0 };
+
+        /* ── DOM refs ──────────────────────────────────────────── */
+        const tbody = document.getElementById('event-body');
+        const clockEl = document.getElementById('clock');
+        const countBadge = document.getElementById('event-count');
+
+        /* ── Clock ─────────────────────────────────────────────── */
+        function updateClock() {
+            const now = new Date();
+            clockEl.textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        /* ── Format timestamp ──────────────────────────────────── */
+        function formatTimestamp() {
+            const now = new Date();
+            const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const time = now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const ms = String(now.getMilliseconds()).padStart(3, '0');
+            return `${date} ${time}.${ms}`;
+        }
+
+        /* ── Update stat cards ─────────────────────────────────── */
+        function updateStats() {
+            document.getElementById('stat-violations').textContent = counts.SpeedViolation;
+            document.getElementById('stat-congestion').textContent = counts.CongestionAlert;
+            document.getElementById('stat-cleared').textContent = counts.TrafficCleared;
+            document.getElementById('stat-detected').textContent = counts.VehicleDetected;
+
+            const total = Object.values(counts).reduce((s, v) => s + v, 0);
+            countBadge.textContent = `${Math.min(total, MAX_ROWS)} of ${total} events`;
+        }
+
+        /* ── Add event row ─────────────────────────────────────── */
+        function addEvent() {
+            const evtDef = EVENT_TYPES[eventIndex % EVENT_TYPES.length];
+            eventIndex++;
+
+            const data = evtDef.generate();
+            counts[evtDef.type]++;
+
+            const isProcessed = Math.random() > 0.15;
+
+            const tr = document.createElement('tr');
+            tr.className = `${evtDef.cssClass} row-enter`;
+            tr.innerHTML = `
+                <td>
+                    <span class="event-badge">
+                        <span class="dot"></span>
+                        ${evtDef.label}
+                    </span>
+                </td>
+                <td><span class="camera-id">${data.camera}</span></td>
+                <td><span class="details-text">${data.details}</span></td>
+                <td><span class="timestamp">${formatTimestamp()}</span></td>
+                <td>
+                    <span class="status-badge ${isProcessed ? 'processed' : 'pending'}">
+                        ${isProcessed ? 'Processed' : 'Pending'}
+                    </span>
+                </td>
+            `;
+
+            /* Insert at top */
+            if (tbody.firstChild) {
+                tbody.insertBefore(tr, tbody.firstChild);
+            } else {
+                tbody.appendChild(tr);
+            }
+
+            /* Remove overflow rows with animation */
+            while (tbody.children.length > MAX_ROWS) {
+                const last = tbody.lastChild;
+                last.classList.add('row-exit');
+                last.addEventListener('animationend', () => last.remove());
+            }
+
+            updateStats();
+        }
+
+        /* ── Start the stream ──────────────────────────────────── */
+        setInterval(addEvent, 2000);
+
+        /* Seed a few initial events so the dashboard isn't empty */
+        for (let i = 0; i < 5; i++) {
+            addEvent();
+        }
+    </script>
+</body>
+</html>
