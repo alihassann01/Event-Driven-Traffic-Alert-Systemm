@@ -1,0 +1,12 @@
+OWNER: PARTNER
+Replace this file with UML_Diagram.png exported from draw.io
+
+UML must show:
+- IEventSubscriber (abstract class) with on_event() method
+- IdempotentReceiver (abstract class) with seen_ids, on_event(), process_event()
+- EventBus class with subscribe(), unsubscribe(), publish(), subscribers list
+- AlertService    → inherits IdempotentReceiver + IEventSubscriber
+- LoggingService  → inherits IdempotentReceiver + IEventSubscriber
+- DashboardService  → inherits IEventSubscriber
+- ReportingService  → inherits IEventSubscriber
+- All arrows correctly labelled (inheritance = hollow arrow, association = solid arrow)
