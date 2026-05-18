@@ -7,7 +7,7 @@ class VehicleDetectedEvent:
     vehicle_id: str
     plate_number: str
     camera_id: str
-    lane_number: int
+    lane_number: int | None = None
 
 
 # Published when a detected vehicle exceeds the configured speed limit.
@@ -33,4 +33,14 @@ class CongestionAlertEvent:
 @dataclass
 class TrafficClearedEvent:
     intersection_id: str
+    camera_id: str
+
+
+# Published when an emergency vehicle is detected and needs priority handling.
+@dataclass
+class EmergencyVehicleEvent:
+    vehicle_id: str
+    plate_number: str
+    vehicle_type: str
+    priority_level: str
     camera_id: str

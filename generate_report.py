@@ -221,9 +221,9 @@ add_body(
 # ── events.py ─────────────────────────────────────────────────────────
 add_heading_styled("Task 1: Event Definitions — events.py", level=2)
 add_body(
-    "This module defines the four event dataclasses that represent domain occurrences in the traffic "
-    "monitoring system. Each event is a simple data container decorated with @dataclass for automatic "
-    "constructor generation and clean string representation."
+    "This module defines the four required event dataclasses plus a fifth EmergencyVehicleEvent used "
+    "to demonstrate extensibility. VehicleDetectedEvent keeps lane_number optional so old producers "
+    "and subscribers remain compatible with the evolved schema."
 )
 add_code_block(read_source("core/events.py"))
 
@@ -251,8 +251,8 @@ add_code_block(read_source("core/idempotent_base.py"))
 add_heading_styled("Task 4: Event Bus — event_bus.py", level=2)
 add_body(
     "The EventBus class implements the Observer Pattern. It maintains a list of subscribers and "
-    "provides subscribe(), unsubscribe(), and publish() methods. When an event is published, the "
-    "bus iterates over all registered subscribers and delivers the envelope to each via on_event(). "
+    "provides subscribe(), unsubscribe(), publish(), flush(), and pending_count() methods. Published "
+    "events are placed in per-subscriber queues and then delivered via on_event(). "
     "The bus is fully decoupled—it knows nothing about event types or subscriber implementations."
 )
 add_code_block(read_source("core/event_bus.py"))
@@ -261,9 +261,9 @@ add_code_block(read_source("core/event_bus.py"))
 add_heading_styled("Task 5: Subscriber Services — subscribers.py", level=2)
 add_body(
     "This module defines five classes. IEventSubscriber is the abstract interface that all subscribers "
-    "implement. AlertService and LoggingService extend IdempotentReceiver for duplicate protection. "
-    "DashboardService handles real-time display updates. ReportingService collects data for periodic "
-    "reporting. Each service processes only the event types relevant to its domain responsibility."
+    "implement. AlertService, LoggingService, DashboardService, and ReportingService all extend "
+    "IdempotentReceiver, so every subscriber checks event_id and ignores duplicates before processing. "
+    "Each service processes only the event types relevant to its domain responsibility."
 )
 add_code_block(read_source("core/subscribers.py"))
 
@@ -274,7 +274,8 @@ add_body(
     "instantiates all four subscriber services, subscribes them, and publishes one event of each "
     "type. It then demonstrates the unsubscribe capability by removing DashboardService and "
     "publishing an additional event to show that only the remaining subscribers receive it. "
-    "A final summary displays the penalty count, log entries, and report data points collected."
+    "Finally, it publishes EmergencyVehicleEvent to prove a fifth event type can be added without "
+    "changing EventBus or any existing subscriber classes."
 )
 add_code_block(read_source("main.py"))
 
@@ -448,9 +449,10 @@ add_heading_styled("Bounded Queue Tactic", level=2)
 add_body(
     "A bounded queue is a FIFO data structure with a fixed maximum capacity. Once full, any new "
     "enqueue triggers a predefined overflow action. Implementation involves assigning each subscriber "
-    "a per-subscriber bounded queue (e.g., Python collections.deque with maxlen). The publish() "
-    "method appends to queues rather than calling on_event() directly, and a dedicated worker thread "
-    "drains each queue at the subscriber's natural processing rate."
+    "a per-subscriber bounded queue using Python collections.deque. In the implementation, publish() "
+    "appends envelopes to subscriber queues, flush() drains the queues, and max_queue_size activates "
+    "overflow protection. This keeps normal delivery simple while proving the bounded-queue tactic "
+    "required for overload conditions."
 )
 
 add_heading_styled("Eviction Policy — Priority-Based Eviction", level=2)
@@ -580,7 +582,7 @@ add_body(
     "Event-Driven Traffic Alert System built in Python 3. The system demonstrates three foundational "
     "design patterns — the Observer Pattern for decoupled event delivery via the EventBus, the Event "
     "Envelope Pattern for metadata-rich event wrapping enabling traceability and versioning, and the "
-    "Idempotent Receiver Pattern for safe duplicate rejection in AlertService and LoggingService. "
+    "Idempotent Receiver Pattern for safe duplicate rejection across all subscriber services. "
     "The CLO 4 analysis examined three real-world architectural challenges: schema evolution was "
     "addressed through backward-compatible optional fields guided by a formal Architecture Decision "
     "Record; event flooding during peak traffic was mitigated through bounded queues with priority-based "

@@ -5,6 +5,7 @@ from core.events import (
     SpeedViolationEvent,
     CongestionAlertEvent,
     TrafficClearedEvent,
+    EmergencyVehicleEvent,
 )
 from core.subscribers import (
     AlertService,
@@ -115,6 +116,26 @@ envelope5 = EventEnvelope(
 )
 bus.publish(envelope5)
 print("(Notice: DashboardService did NOT receive this event)\n")
+
+# Demonstrate adding a 5th event type without changing EventBus or existing services.
+print("=" * 50)
+print("=== Demonstrating 5th Event Type Extensibility ===")
+print("=" * 50)
+
+emergency_event = EmergencyVehicleEvent(
+    vehicle_id="EV001",
+    plate_number="EMG-911",
+    vehicle_type="Ambulance",
+    priority_level="CRITICAL",
+    camera_id="CAM_04",
+)
+envelope6 = EventEnvelope(
+    correlation_id="EMERGENCY_001",
+    source_id="CAM_04",
+    payload=emergency_event,
+)
+bus.publish(envelope6)
+print("EmergencyVehicleEvent was delivered without changing EventBus.\n")
 
 # ── Final Summary ────────────────────────────────────────────────────
 print("=" * 50)
